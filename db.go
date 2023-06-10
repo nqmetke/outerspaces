@@ -1,37 +1,26 @@
 package main
 
 import (
-	"context"
 	"fmt"
 	"os"
 
-	"github.com/jackc/pgx/v5/pgxpool"
+	"gorm.io/driver/postgres"
+	"gorm.io/gorm"
 )
 
-func DbInit() *pgxpool.Pool {
-	dbpool, err := pgxpool.New(context.Background(), os.Getenv("DATABASE_URL"))
+var DB *gorm.DB
+
+func GormInit() {
+	var err error
+	dsn := fmt.Sprintf("host=localhost user=%s password=%s dbname=%s port=5432", os.Getenv("DB_USER"), os.Getenv("DB_PASS"), os.Getenv("DB_NAME"))
+	DB, err = gorm.Open(postgres.Open(dsn), &gorm.Config{})
+
 	if err != nil {
-		fmt.Fprintf(os.Stderr, "Unable to create connection pool: %v\n", err)
-		os.Exit(1)
-	}
-	var id int
-	var title string
-	var content string
-	err = dbpool.QueryRow(context.Background(), "select * from posts;").Scan(&id, &title, &content)
-	if err != nil {
-		fmt.Fprintf(os.Stderr, "QueryRow failed: %v\n", err)
-		os.Exit(1)
+		fmt.Printf("Error: %v", err)
 	}
 
-	fmt.Println(title, content)
-
-	return dbpool
-}
-
-func NewPost(conn *pgxpool.Pool, title, content string) {
-	_, err := conn.Exec(context.Background(), "INSERT INTO posts (title, content) VALUES ($1, $2)", title, content)
-	if err != nil {
-		fmt.Fprintf(os.Stderr, "Unable to insert into posts: %v\n", err)
-	}
+	DB.AutoMigrate(&User{})
+	DB.AutoMigrate(&Post{})
+	DB.AutoMigrate(&Space{})
 
 }

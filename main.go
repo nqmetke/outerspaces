@@ -1,33 +1,39 @@
 package main
 
 import (
-	"fmt"
+	"log"
 	"net/http"
 
 	"github.com/gin-gonic/gin"
+	"github.com/joho/godotenv"
 )
 
 func main() {
+	err := godotenv.Load()
+	if err != nil {
+		log.Fatal("Error loading .env file")
+	}
 	r := gin.Default()
 
-	conn := DbInit()
+	GormInit()
 
-	r.GET("/ping", func(c *gin.Context) {
-		fmt.Println("GET requet")
+	r.GET("/", func(c *gin.Context) {
 		c.JSON(http.StatusOK, gin.H{
-			"message": "pong",
+			"connected": "true",
 		})
 	})
 
-	r.GET("/posts", func(c *gin.Context) {
-		c.JSON(http.StatusOK, gin.H{})
+	r.POST("/api/register", func(c *gin.Context) {
+		UserRegister(c)
 	})
 
-	r.POST("/posts/create", func(c *gin.Context) {
-		var res NewPostJson
-
-		c.BindJSON(&res)
-		NewPost(conn, res.Title, res.Content)
+	r.POST("/api/login", func(c *gin.Context) {
+		UserLogin(c)
 	})
+
+	protected := r.Group("/api/admin")
+	protected.Use(JwtAuthMiddleware())
+	protected.GET("/user", GetCurrentUser)
+
 	r.Run() // listen and serve on 0.0.0.0:8080 (for windows "localhost:8080")}
 }
